@@ -45,16 +45,21 @@ model User {
 // ============================================================
 
 model Product {
-  id              String    @id @default(cuid())
-  name            String
-  description     String?
-  defaultCostPrice Decimal  @db.Decimal(15, 2)
-  sellingPrice    Decimal   @db.Decimal(15, 2)
-  defaultMargin   Decimal   @db.Decimal(15, 2)
-  unit            String    @default("pcs")
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                    String    @id @default(cuid())
+  name                  String
+  description           String?
+  defaultCostPrice      Decimal   @db.Decimal(15, 2)  // HPP (Harga Pokok Penjualan)
+  hppPerPaket           Decimal?  @db.Decimal(15, 2)  // HPP per Paket
+  ongkirJabodetabek     Decimal?  @db.Decimal(15, 2)  // Ongkir per Paket (Jabodetabek)
+  ongkirLuarJabodetabek Decimal?  @db.Decimal(15, 2)  // Ongkir per Paket (Luar Jabodetabek)
+  hargaTayang           Decimal?  @db.Decimal(15, 2)  // Harga Tayang (harga display ke pelanggan)
+  marginPerPaket        Decimal?  @db.Decimal(15, 2)  // Margin per Paket
+  sellingPrice          Decimal   @db.Decimal(15, 2)  // Harga Jual
+  defaultMargin         Decimal   @db.Decimal(15, 2)  // Margin default per pcs
+  unit                  String    @default("pcs")
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   poSessionProducts PoSessionProduct[]
   orderItems        OrderItem[]

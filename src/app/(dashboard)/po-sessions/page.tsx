@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, ProgressBar } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
-import { Plus, X, Play, Square, XCircle } from "lucide-react";
+import { Plus, X, Play, Square, XCircle, RotateCcw } from "lucide-react";
 
 export default function POSessionsPage() {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -95,10 +98,12 @@ export default function POSessionsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Sesi Pre-Order</h1>
           <p className="text-gray-500">Kelola sesi PO dan kuota</p>
         </div>
-        <Button onClick={() => { setShowForm(!showForm); resetForm(); }}>
-          {showForm ? <X size={16} className="mr-2" /> : <Plus size={16} className="mr-2" />}
-          {showForm ? "Tutup" : "Buka PO Baru"}
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => { setShowForm(!showForm); resetForm(); }}>
+            {showForm ? <X size={16} className="mr-2" /> : <Plus size={16} className="mr-2" />}
+            {showForm ? "Tutup" : "Buka PO Baru"}
+          </Button>
+        )}
       </div>
 
       {showForm && (
@@ -175,12 +180,12 @@ export default function POSessionsPage() {
                     {po.allowLateOrders && <p className="text-blue-600">✓ Late orders diizinkan</p>}
                   </div>
                   <div className="flex gap-2">
-                    {po.status === "DRAFT" && (
+                    {isAdmin && po.status === "DRAFT" && (
                       <Button size="sm" onClick={() => updateStatusMutation.mutate({ id: po.id, status: "OPEN" })}>
                         <Play size={14} className="mr-1" /> Buka
                       </Button>
                     )}
-                    {po.status === "OPEN" && (
+                    {isAdmin && po.status === "OPEN" && (
                       <>
                         <Button size="sm" variant="secondary" onClick={() => updateStatusMutation.mutate({ id: po.id, status: "CLOSED" })}>
                           <Square size={14} className="mr-1" /> Tutup
@@ -189,6 +194,11 @@ export default function POSessionsPage() {
                           <XCircle size={14} className="mr-1" /> Batal
                         </Button>
                       </>
+                    )}
+                    {isAdmin && po.status === "CLOSED" && (
+                      <Button size="sm" variant="outline" onClick={() => updateStatusMutation.mutate({ id: po.id, status: "OPEN" })}>
+                        <RotateCcw size={14} className="mr-1" /> Buka Kembali
+                      </Button>
                     )}
                   </div>
                 </div>

@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, Select } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Plus, X, CheckCircle, Truck } from "lucide-react";
 
 export default function OrdersPage() {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     poSessionId: "",
@@ -287,7 +290,7 @@ export default function OrdersPage() {
                               <CheckCircle size={16} className="text-green-600" />
                             </Button>
                           )}
-                          {order.distributionStatus === "PENDING" && (
+                          {isAdmin && order.distributionStatus === "PENDING" && (
                             <Button size="sm" variant="ghost" onClick={() => updateDistributionMutation.mutate(order.id)} title="Tandai Terkirim">
                               <Truck size={16} className="text-blue-600" />
                             </Button>

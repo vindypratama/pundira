@@ -44,19 +44,21 @@ async function main() {
 
   // Buat contoh Produk
   const products = [
-    { name: "Kemeja Flanel", defaultCostPrice: 75000, sellingPrice: 125000, defaultMargin: 50000, unit: "pcs" },
-    { name: "Kaos Polos", defaultCostPrice: 35000, sellingPrice: 65000, defaultMargin: 30000, unit: "pcs" },
-    { name: "Celana Jeans", defaultCostPrice: 100000, sellingPrice: 175000, defaultMargin: 75000, unit: "pcs" },
-    { name: "Jaket Hoodie", defaultCostPrice: 85000, sellingPrice: 150000, defaultMargin: 65000, unit: "pcs" },
+    { name: "Kemeja Flanel", defaultCostPrice: 75000, hppPerPaket: 70000, ongkirJabodetabek: 5000, ongkirLuarJabodetabek: 10000, hargaTayang: 130000, marginPerPaket: 55000, sellingPrice: 125000, defaultMargin: 50000, unit: "pcs" },
+    { name: "Kaos Polos", defaultCostPrice: 35000, hppPerPaket: 32000, ongkirJabodetabek: 5000, ongkirLuarJabodetabek: 10000, hargaTayang: 70000, marginPerPaket: 33000, sellingPrice: 65000, defaultMargin: 30000, unit: "pcs" },
+    { name: "Celana Jeans", defaultCostPrice: 100000, hppPerPaket: 95000, ongkirJabodetabek: 8000, ongkirLuarJabodetabek: 15000, hargaTayang: 185000, marginPerPaket: 82000, sellingPrice: 175000, defaultMargin: 75000, unit: "pcs" },
+    { name: "Jaket Hoodie", defaultCostPrice: 85000, hppPerPaket: 80000, ongkirJabodetabek: 8000, ongkirLuarJabodetabek: 15000, hargaTayang: 160000, marginPerPaket: 72000, sellingPrice: 150000, defaultMargin: 65000, unit: "pcs" },
   ];
 
   for (const product of products) {
+    const { name, ...productData } = product;
     await prisma.product.upsert({
-      where: { id: product.name.toLowerCase().replace(/\s/g, "-") },
+      where: { id: name.toLowerCase().replace(/\s/g, "-") },
       update: {},
       create: {
-        id: product.name.toLowerCase().replace(/\s/g, "-"),
-        ...product,
+        id: name.toLowerCase().replace(/\s/g, "-"),
+        name,
+        ...productData,
       },
     });
     console.log(`✅ Product created: ${product.name}`);

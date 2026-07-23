@@ -14,6 +14,11 @@ export default function ProductsPage() {
     name: "",
     description: "",
     defaultCostPrice: 0,
+    hppPerPaket: 0,
+    ongkirJabodetabek: 0,
+    ongkirLuarJabodetabek: 0,
+    hargaTayang: 0,
+    marginPerPaket: 0,
     sellingPrice: 0,
     defaultMargin: 0,
     unit: "pcs",
@@ -47,7 +52,7 @@ export default function ProductsPage() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", description: "", defaultCostPrice: 0, sellingPrice: 0, defaultMargin: 0, unit: "pcs" });
+    setForm({ name: "", description: "", defaultCostPrice: 0, hppPerPaket: 0, ongkirJabodetabek: 0, ongkirLuarJabodetabek: 0, hargaTayang: 0, marginPerPaket: 0, sellingPrice: 0, defaultMargin: 0, unit: "pcs" });
     setErrors({});
   };
 
@@ -87,10 +92,15 @@ export default function ProductsPage() {
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Nama Produk" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} />
               <Input label="Satuan" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-              <Input label="Harga Modal (Rp)" type="number" value={form.defaultCostPrice || ""} onChange={(e) => setForm({ ...form, defaultCostPrice: Number(e.target.value) })} error={errors.defaultCostPrice} />
+              <Input label="HPP (Rp)" type="number" value={form.defaultCostPrice || ""} onChange={(e) => setForm({ ...form, defaultCostPrice: Number(e.target.value) })} error={errors.defaultCostPrice} />
+              <Input label="HPP per Paket (Rp)" type="number" value={form.hppPerPaket || ""} onChange={(e) => setForm({ ...form, hppPerPaket: Number(e.target.value) })} />
+              <Input label="Ongkir Jabodetabek (Rp)" type="number" value={form.ongkirJabodetabek || ""} onChange={(e) => setForm({ ...form, ongkirJabodetabek: Number(e.target.value) })} />
+              <Input label="Ongkir Luar Jabodetabek (Rp)" type="number" value={form.ongkirLuarJabodetabek || ""} onChange={(e) => setForm({ ...form, ongkirLuarJabodetabek: Number(e.target.value) })} />
+              <Input label="Harga Tayang (Rp)" type="number" value={form.hargaTayang || ""} onChange={(e) => setForm({ ...form, hargaTayang: Number(e.target.value) })} />
+              <Input label="Margin per Paket (Rp)" type="number" value={form.marginPerPaket || ""} onChange={(e) => setForm({ ...form, marginPerPaket: Number(e.target.value) })} />
               <Input label="Harga Jual (Rp)" type="number" value={form.sellingPrice || ""} onChange={(e) => setForm({ ...form, sellingPrice: Number(e.target.value) })} error={errors.sellingPrice} />
               <div className="flex gap-2 items-end">
-                <Input label="Margin (Rp)" type="number" value={form.defaultMargin || ""} onChange={(e) => setForm({ ...form, defaultMargin: Number(e.target.value) })} />
+                <Input label="Margin Default (Rp)" type="number" value={form.defaultMargin || ""} onChange={(e) => setForm({ ...form, defaultMargin: Number(e.target.value) })} />
                 <Button type="button" variant="outline" onClick={handleAutoMargin}>Hitung Otomatis</Button>
               </div>
               <Input label="Deskripsi" value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -114,17 +124,27 @@ export default function ProductsPage() {
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produk</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga Modal</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">HPP</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">HPP/Paket</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ongkir JBD</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ongkir Luar</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga Tayang</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Margin/Paket</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga Jual</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Margin</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {products?.map((product: { id: string; name: string; defaultCostPrice: number; sellingPrice: number; defaultMargin: number; unit: string }) => (
+                  {products?.map((product: { id: string; name: string; defaultCostPrice: number; hppPerPaket?: number; ongkirJabodetabek?: number; ongkirLuarJabodetabek?: number; hargaTayang?: number; marginPerPaket?: number; sellingPrice: number; defaultMargin: number; unit: string }) => (
                     <tr key={product.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{product.name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(product.defaultCostPrice)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{product.hppPerPaket ? formatCurrency(product.hppPerPaket) : "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{product.ongkirJabodetabek ? formatCurrency(product.ongkirJabodetabek) : "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{product.ongkirLuarJabodetabek ? formatCurrency(product.ongkirLuarJabodetabek) : "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{product.hargaTayang ? formatCurrency(product.hargaTayang) : "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{product.marginPerPaket ? formatCurrency(product.marginPerPaket) : "-"}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(product.sellingPrice)}</td>
                       <td className="px-4 py-3">
                         <Badge variant="success">{formatCurrency(product.defaultMargin)}</Badge>

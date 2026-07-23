@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id: orderId } = await params;
   const body = await request.json();
-  const { orderId, action, paymentStatus, distributionStatus } = body;
+  const { action, paymentStatus, distributionStatus } = body;
 
   if (!orderId || !action) {
     return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
