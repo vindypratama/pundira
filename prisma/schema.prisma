@@ -1,0 +1,240 @@
+// Pundira - Prisma Schema
+// Sistem aplikasi terintegrasi untuk mengelola siklus penjualan Pre-Order (PO),
+// manajemen jaringan Mitra (Sales/Reseller), serta pencatatan arus kas dan piutang.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Epic 1: Autentikasi & Manajemen Akun
+// ============================================================
+
+enum UserRole {
+  ADMIN   // Super Admin (Pemilik)
+  MITRA   // Sales/Reseller
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  phone         String    @unique
+  email         String?   @unique
+  passwordHash  String
+  role          UserRole
+  bankName      String?
+  bankAccount   String?
+  bankHolder    String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders            Order[]
+  capitalDeposits   CapitalDeposit[]
+  financialLedgers  FinancialLedger[]
+
+  @@map("users")
+}
+
+// ============================================================
+// Epic 2: Manajemen Katalog & Sesi Pre-Order (PO)
+// ============================================================
+
+model Product {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  defaultCostPrice Decimal  @db.Decimal(15, 2)
+  sellingPrice    Decimal   @db.Decimal(15, 2)
+  defaultMargin   Decimal   @db.Decimal(15, 2)
+  unit            String    @default("pcs")
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  poSessionProducts PoSessionProduct[]
+  orderItems        OrderItem[]
+
+  @@map("products")
+}
+
+enum POStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+model POSession {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  targetQuota     Int
+  status          POStatus  @default(DRAFT)
+  allowLateOrders Boolean   @default(false)
+  startDate       DateTime
+  endDate         DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  products             PoSessionProduct[]
+  orders               Order[]
+  supplierTransactions POSupplierTransaction[]
+
+  @@map("po_sessions")
+}
+
+model PoSessionProduct {
+  id              String    @id @default(cuid())
+  poSessionId     String
+  productId       String
+  actualMargin    Decimal   @db.Decimal(15, 2)
+  actualCostPrice Decimal?  @db.Decimal(15, 2)
+  createdAt       DateTime  @default(now())
+
+  poSession   POSession @relation(fields: [poSessionId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+
+  @@unique([poSessionId, productId])
+  @@map("po_session_products")
+}
+
+// ============================================================
+// Epic 3: Pemrosesan Pesanan (Order Entry & Distribusi)
+// ============================================================
+
+enum PaymentStatus {
+  PIUTANG
+  LUNAS
+}
+
+enum DistributionStatus {
+  PENDING
+  DISTRIBUTED
+}
+
+model Order {
+  id                  String            @id @default(cuid())
+  orderNumber         String            @unique
+  poSessionId         String
+  mitraId             String
+  customerName        String
+  customerPhone       String?
+  customerAddress     String?
+  totalPrice          Decimal           @db.Decimal(15, 2)
+  paymentStatus       PaymentStatus     @default(PIUTANG)
+  paymentDate         DateTime?
+  distributionStatus  DistributionStatus @default(PENDING)
+  distributionDate    DateTime?
+  isLateOrder         Boolean           @default(false)
+  notes               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  poSession        POSession  @relation(fields: [poSessionId], references: [id])
+  mitra            User       @relation(fields: [mitraId], references: [id])
+  items            OrderItem[]
+  financialLedgers FinancialLedger[]
+
+  @@index([mitraId])
+  @@index([poSessionId])
+  @@index([paymentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                  String    @id @default(cuid())
+  orderId             String
+  productId           String
+  poSessionProductId  String?
+  quantity            Int
+  unitPrice           Decimal   @db.Decimal(15, 2)
+  costPrice           Decimal   @db.Decimal(15, 2)
+  margin              Decimal   @db.Decimal(15, 2)
+  subtotal            Decimal   @db.Decimal(15, 2)
+  createdAt           DateTime  @default(now())
+
+  order             Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Product           @relation(fields: [productId], references: [id])
+  poSessionProduct  PoSessionProduct? @relation(fields: [poSessionProductId], references: [id])
+
+  @@map("order_items")
+}
+
+// ============================================================
+// Epic 4: Manajemen Piutang & Pencatatan Kas Keuangan
+// ============================================================
+
+enum LedgerType {
+  MODAL
+  OPERASIONAL
+  MARGIN
+  PENARIKAN
+  PENGELUARAN
+  SETORAN_MODAL
+}
+
+model FinancialLedger {
+  id          String      @id @default(cuid())
+  type        LedgerType
+  amount      Decimal     @db.Decimal(15, 2)
+  description String
+  orderId     String?
+  userId      String?
+  createdAt   DateTime    @default(now())
+
+  order Order? @relation(fields: [orderId], references: [id])
+  user  User?  @relation(fields: [userId], references: [id])
+
+  @@index([type])
+  @@index([createdAt])
+  @@map("financial_ledgers")
+}
+
+model CapitalDeposit {
+  id            String    @id @default(cuid())
+  amount        Decimal   @db.Decimal(15, 2)
+  description   String
+  depositDate   DateTime  @default(now())
+  recordedById  String
+  createdAt     DateTime  @default(now())
+
+  recordedBy User @relation(fields: [recordedById], references: [id])
+
+  @@map("capital_deposits")
+}
+
+// ============================================================
+// Epic 5: Pencatatan Transaksi Supplier & PO Template
+// ============================================================
+
+enum TransferStatus {
+  BELUM_TRANSFER
+  SUDAH_TRANSFER
+}
+
+model POSupplierTransaction {
+  id              String          @id @default(cuid())
+  poSessionId     String
+  supplier        String
+  productName     String
+  quantity        Int
+  purchasePrice   Decimal         @db.Decimal(15, 2)
+  totalPrice      Decimal         @db.Decimal(15, 2)
+  transferStatus  TransferStatus  @default(BELUM_TRANSFER)
+  transferDate    DateTime?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  poSession POSession @relation(fields: [poSessionId], references: [id])
+
+  @@index([poSessionId])
+  @@map("po_supplier_transactions")
+}
