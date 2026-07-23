@@ -26,15 +26,12 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
 
       - name: Install dependencies
-        working-directory: pundira
         run: npm ci
 
       - name: TypeScript check
-        working-directory: pundira
         run: npx tsc --noEmit
 
       - name: ESLint
-        working-directory: pundira
         run: npm run lint
 
   # ──────────────────────────────────────────
@@ -68,27 +65,22 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
 
       - name: Install dependencies
-        working-directory: pundira
         run: npm ci
 
       - name: Generate Prisma Client
-        working-directory: pundira
         run: npx prisma generate
 
       - name: Push database schema
-        working-directory: pundira
         run: npx prisma db push --skip-generate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pundira
 
       - name: Seed database
-        working-directory: pundira
         run: npx tsx prisma/seed.ts
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pundira
 
       - name: Build Next.js
-        working-directory: pundira
         run: npm run build
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pundira
@@ -131,7 +123,7 @@ jobs:
             fi
 
             echo "📦 Installing dependencies..."
-            cd $APP_DIR/pundira
+            cd $APP_DIR
             npm ci --production=false
 
             echo "🔧 Generating Prisma Client..."
