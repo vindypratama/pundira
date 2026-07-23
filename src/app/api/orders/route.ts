@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Validasi: semua produk harus ada di sesi PO ini
-  const validProductIds = new Set(poSession.products.map((psp) => psp.productId));
+  const validProductIds = new Set(poSession.products.map((psp: { productId: string }) => psp.productId));
   const invalidItems = items.filter((item: { productId: string }) => !validProductIds.has(item.productId));
   if (invalidItems.length > 0) {
     return NextResponse.json({ error: "Ada produk yang tidak terdaftar di sesi PO ini" }, { status: 400 });
