@@ -1,0 +1,159 @@
+name: CI/CD Pundira
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  # ──────────────────────────────────────────
+  # Job 1: Lint & Type Check
+  # ──────────────────────────────────────────
+  lint:
+    name: 🔍 Lint & Type Check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pundira/package-lock.json
+
+      - name: Install dependencies
+        working-directory: pundira
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: pundira
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        working-directory: pundira
+        run: npm run lint
+
+  # ──────────────────────────────────────────
+  # Job 2: Build & Test
+  # ──────────────────────────────────────────
+  build:
+    name: 🏗️ Build & Test
+    runs-on: ubuntu-24.04
+    needs: lint
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pundira
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pundira/package-lock.json
+
+      - name: Install dependencies
+        working-directory: pundira
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: pundira
+        run: npx prisma generate
+
+      - name: Push database schema
+        working-directory: pundira
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pundira
+
+      - name: Seed database
+        working-directory: pundira
+        run: npx tsx prisma/seed.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pundira
+
+      - name: Build Next.js
+        working-directory: pundira
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pundira
+          NEXTAUTH_SECRET: ci-test-secret-key
+          NEXTAUTH_URL: http://localhost:3001
+
+  # ──────────────────────────────────────────
+  # Job 3: Deploy via SSH (hanya main branch)
+  # ──────────────────────────────────────────
+  deploy:
+    name: 🚀 Deploy to VPS
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -e
+
+            APP_DIR="/var/www/html/pundira"
+            REPO_URL="https://github.com/${{ github.repository }}.git"
+
+            echo "📥 Pulling latest code..."
+            if [ -d "$APP_DIR/.git" ]; then
+              cd $APP_DIR
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              sudo mkdir -p $APP_DIR
+              sudo chown -R $USER:$USER $APP_DIR
+              git clone --branch main $REPO_URL $APP_DIR
+              cd $APP_DIR
+            fi
+
+            echo "📦 Installing dependencies..."
+            cd $APP_DIR/pundira
+            npm ci --production=false
+
+            echo "🔧 Generating Prisma Client..."
+            npx prisma generate
+
+            echo "🗃️ Running database migrations..."
+            npx prisma migrate deploy
+
+            echo "🌱 Seeding database..."
+            npx tsx prisma/seed.ts
+
+            echo "🏗️ Building Next.js..."
+            npm run build
+
+            echo "🔄 Restarting application..."
+            if command -v pm2 &> /dev/null; then
+              pm2 restart pundira || pm2 start npm --name "pundira" -- start
+            elif systemctl is-active --quiet pundira; then
+              sudo systemctl restart pundira
+            else
+              echo "⚠️ No process manager found. Starting with pm2..."
+              npx pm2 start npm --name "pundira" -- start
+            fi
+
+            echo "✅ Deploy berhasil!"
