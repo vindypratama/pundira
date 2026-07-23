@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, Select } from "@/components/ui";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { Plus, X, CheckCircle, Truck } from "lucide-react";
 
 export default function OrdersPage() {

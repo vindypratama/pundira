@@ -122,7 +122,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(order, { status: 201 });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createFinancialEntries(orderId: string, totalPrice: number) {
   const modal = totalPrice * 0.7; // 70% untuk modal
   const operasional = totalPrice * 0.05; // 5% kas operasional

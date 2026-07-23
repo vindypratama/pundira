@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
-import { Plus, Edit, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import type { ProductInput } from "@/lib/validations";
 
 export default function ProductsPage() {
