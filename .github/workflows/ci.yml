@@ -110,7 +110,7 @@ jobs:
           script: |
             set -e
 
-            APP_DIR="/var/www/html/pundira"
+            APP_DIR="$HOME/pundira"
             REPO_URL="https://github.com/${{ github.repository }}.git"
 
             echo "📥 Pulling latest code..."
@@ -119,8 +119,6 @@ jobs:
               git fetch origin main
               git reset --hard origin/main
             else
-              sudo mkdir -p $APP_DIR
-              sudo chown -R $USER:$USER $APP_DIR
               git clone --branch main $REPO_URL $APP_DIR
               cd $APP_DIR
             fi
@@ -142,13 +140,6 @@ jobs:
             npm run build
 
             echo "🔄 Restarting application..."
-            if command -v pm2 &> /dev/null; then
-              pm2 restart pundira || pm2 start npm --name "pundira" -- start
-            elif systemctl is-active --quiet pundira; then
-              sudo systemctl restart pundira
-            else
-              echo "⚠️ No process manager found. Starting with pm2..."
-              npx pm2 start npm --name "pundira" -- start
-            fi
+            pm2 restart pundira || pm2 start npm --name "pundira" -- start
 
             echo "✅ Deploy berhasil!"
