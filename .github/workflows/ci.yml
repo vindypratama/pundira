@@ -87,8 +87,25 @@ jobs:
         run: npm run build
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pundira
-          NEXTAUTH_SECRET: ci-test-secret-key
-          NEXTAUTH_URL: http://localhost:3001
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+
+      - name: Prepare deploy artifact
+        run: |
+          mkdir -p deploy
+          cp -r .next/standalone deploy/.next-standalone
+          cp -r .next/static deploy/.next-standalone/.next/static
+          cp -r public deploy/.next-standalone/public
+          cp -r prisma deploy/.next-standalone/prisma
+          cp package-lock.json deploy/.next-standalone/
+          cd deploy && tar -czf deploy.tar.gz .next-standalone
+
+      - name: Upload deploy artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-artifact
+          path: deploy/deploy.tar.gz
+          retention-days: 3
 
   # ──────────────────────────────────────────
   # Job 3: Deploy via SSH (hanya main branch)
@@ -100,47 +117,50 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     steps:
+      - name: Download deploy artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-artifact
+
+      - name: Upload artifact to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          source: deploy.tar.gz
+          target: /tmp/pundira-deploy
+
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 15m
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             set -e
 
             APP_DIR="$HOME/pundira"
-            REPO_URL="https://github.com/${{ github.repository }}.git"
+            DEPLOY_TMP="/tmp/pundira-deploy"
 
-            echo "📥 Pulling latest code..."
-            if [ -d "$APP_DIR/.git" ]; then
-              cd $APP_DIR
-              git fetch origin main
-              git reset --hard origin/main
-            else
-              rm -rf $APP_DIR
-              git clone --branch main $REPO_URL $APP_DIR
-              cd $APP_DIR
-            fi
+            echo "📦 Extracting deploy artifact..."
+            mkdir -p $APP_DIR
+            cd $DEPLOY_TMP
+            tar -xzf deploy.tar.gz
+            rsync -a --delete .next-standalone/ $APP_DIR/
+            rm -rf $DEPLOY_TMP
 
-            echo "📦 Installing dependencies..."
+            echo "📦 Installing production dependencies..."
             cd $APP_DIR
-            npm ci --production=false
-
-            echo "🔧 Generating Prisma Client..."
-            npx prisma generate
+            npm ci --omit=dev
 
             echo "🗃️ Running database migrations..."
             npx prisma migrate deploy
 
-            echo "🌱 Seeding database..."
-            npx tsx prisma/seed.ts
-
-            echo "🏗️ Building Next.js..."
-            npm run build
-
             echo "🔄 Restarting application..."
-            pm2 restart pundira || pm2 start npm --name "pundira" -- start
+            pm2 restart pundira || pm2 start node --name "pundira" -- server.js
 
             echo "✅ Deploy berhasil!"
