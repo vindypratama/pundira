@@ -92,12 +92,13 @@ jobs:
 
       - name: Prepare deploy artifact
         run: |
-          mkdir -p deploy
-          cp -r .next/standalone deploy/.next-standalone
-          cp -r .next/static deploy/.next-standalone/.next/static
-          cp -r public deploy/.next-standalone/public
-          cp -r prisma deploy/.next-standalone/prisma
-          cp package-lock.json deploy/.next-standalone/
+          mkdir -p deploy/.next-standalone/.next/static
+          cp -r .next/standalone/* deploy/.next-standalone/
+          cp -r .next/static/* deploy/.next-standalone/.next/static/
+          cp -r public deploy/.next-standalone/
+          cp -r prisma deploy/.next-standalone/
+          cp -r node_modules/.prisma deploy/.next-standalone/node_modules/.prisma
+          cp -r node_modules/prisma deploy/.next-standalone/node_modules/prisma
           cd deploy && tar -czf deploy.tar.gz .next-standalone
 
       - name: Upload deploy artifact
@@ -150,12 +151,10 @@ jobs:
             mkdir -p $APP_DIR
             cd $DEPLOY_TMP
             tar -xzf deploy.tar.gz
-            rsync -a --delete .next-standalone/ $APP_DIR/
+            rsync -a --delete --exclude='.env' --exclude='.env.*' .next-standalone/ $APP_DIR/
             rm -rf $DEPLOY_TMP
 
-            echo "📦 Installing production dependencies..."
             cd $APP_DIR
-            npm ci --omit=dev
 
             echo "🗃️ Running database migrations..."
             npx prisma migrate deploy
